@@ -1,47 +1,36 @@
-# Svelte + TS + Vite
+# Akort+ Web
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+Browser tuner for Turkish makam and Western music. Runs entirely on the device —
+audio never leaves the browser.
 
-## Recommended IDE Setup
+## Why the koma system
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+Turkish makam music divides the octave into 53 equal steps rather than 12. That
+choice is not arbitrary: 53 fifths land within 3.6 cents of 31 octaves, so the
+Pythagorean circle very nearly closes.
 
-## Need an official Svelte framework?
+| Interval | Pure ratio | 53-EDO | Error | 12-TET error |
+|---|---|---|---|---|
+| Fifth | 3/2 = 701.955¢ | 31 komas = 701.887¢ | 0.068¢ | 1.955¢ |
+| Major third | 5/4 = 386.314¢ | 17 komas = 384.906¢ | 1.408¢ | 13.686¢ |
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+One koma is 22.64 cents, which is why the pitch estimator interpolates between
+samples: without it, quantisation at A4 is roughly 17 cents.
 
-## Technical considerations
+## How it works
 
-**Why use this over SvelteKit?**
+`getUserMedia` opens the microphone, an `AudioWorklet` copies samples into a
+ring buffer, and a Web Worker runs the YIN estimator on 2048-sample windows.
+Keeping YIN off both the audio thread and the main thread matters: a render
+quantum must finish in about 2.9 ms, and YIN costs roughly 930k operations.
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+## Development
 
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+    npm install
+    npm run dev
+    npm test
+    npm run test:e2e
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+## Related
 
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
-
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `allowJs` in the TS template?**
-
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
-```
+The native iOS app: [Akort+](https://akortplus.com)
