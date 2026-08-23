@@ -14,7 +14,16 @@ export interface DisplayState {
   hasSignal: boolean
   scalePosition: number | null
   komaOffset: number | null
+  /** Consecutive misses so far; the gauge dims once these pass the threshold. */
+  missedFrames: number
 }
+
+// Individual YIN windows routinely miss during vibrato, decay and between
+// plucks. Dimming on the first one made the whole readout flicker. At the 30 Hz
+// analysis rate eleven misses is a ~363ms hold -- long enough to ride out a
+// dropped pluck, short enough to still read as "stopped playing" promptly.
+// Ported from TunerViewModel.signalLossThreshold.
+export const SIGNAL_LOSS_THRESHOLD = 11
 
 export const NO_SIGNAL_STATE: DisplayState = {
   label: '—',
@@ -23,18 +32,26 @@ export const NO_SIGNAL_STATE: DisplayState = {
   hasSignal: false,
   scalePosition: null,
   komaOffset: null,
+  missedFrames: SIGNAL_LOSS_THRESHOLD,
 }
 
-// A missed frame dims the gauge rather than clearing it: single YIN windows
-// routinely miss during vibrato and decay, and resetting on each one made the
-// note flash instead of read continuously.
 export function deriveDisplayState(
   frequency: number | null,
   settings: Settings,
   previous: DisplayState,
 ): DisplayState {
   const note = frequency === null ? null : findNote(frequency, settings)
-  if (note === null) return { ...previous, hasSignal: false }
+
+  if (note === null) {
+    // Clamped rather than left to grow: nothing reads it past the threshold,
+    // and a counter climbing at 30 a second forever is just noise in the state.
+    const missedFrames = Math.min(previous.missedFrames + 1, SIGNAL_LOSS_THRESHOLD)
+    return {
+      ...previous,
+      missedFrames,
+      hasSignal: previous.hasSignal && missedFrames < SIGNAL_LOSS_THRESHOLD,
+    }
+  }
 
   const shifted = applyTransposition(note, settings)
 
@@ -45,6 +62,7 @@ export function deriveDisplayState(
     hasSignal: true,
     scalePosition: shifted.scalePosition,
     komaOffset: shifted.komaOffset,
+    missedFrames: 0,
   }
 }
 

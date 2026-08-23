@@ -44,12 +44,19 @@ export function tolerancePath(toleranceCents: number): string {
   return arcPath(degreesForCents(toleranceCents))
 }
 
-export function needleEndpoints(cents: number): { from: Point; to: Point } {
-  const degrees = degreesForCents(cents)
-  return {
-    from: pointAt(degrees, NEEDLE_INNER_RADIUS),
-    to: pointAt(degrees, NEEDLE_OUTER_RADIUS),
-  }
+// The needle is drawn once, straight up, and rotated about the pivot. Moving
+// its endpoints instead would not animate at all: x1/y1/x2/y2 are plain
+// attributes, not CSS geometry properties, so a transition on them is ignored
+// and the needle jumps between readings. Rotation is also how the iOS gauge
+// does it.
+export const NEEDLE = {
+  from: pointAt(0, NEEDLE_INNER_RADIUS),
+  to: pointAt(0, NEEDLE_OUTER_RADIUS),
+  origin: PIVOT,
+}
+
+export function needleAngle(cents: number): number {
+  return degreesForCents(cents)
 }
 
 // Zero and the quarter marks only. Ticks at the range ends would sit on the

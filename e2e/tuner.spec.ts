@@ -27,8 +27,15 @@ test('reads the fed 440 Hz tone as A4, in tune', async ({ page }) => {
   // Turkish naming is the default, so concert A reads as La4.
   await expect(page.getByText('La4', { exact: true })).toBeVisible({ timeout: 15_000 })
 
-  const cents = await page.locator('.status span').innerText()
-  expect(Math.abs(Number.parseFloat(cents.replace('−', '-')))).toBeLessThan(5)
+  // Poll rather than read once: the stabiliser seeds on the first estimate,
+  // which spans the silence-to-tone edge, and needs a few frames at 30 Hz to
+  // settle onto the real pitch.
+  await expect
+    .poll(async () => {
+      const cents = await page.locator('.status span').innerText()
+      return Math.abs(Number.parseFloat(cents.replace('−', '-')))
+    }, { timeout: 10_000 })
+    .toBeLessThan(5)
 
   await expect(page.getByRole('button', { name: 'Kromatik' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Koma' })).toBeVisible()
@@ -89,4 +96,33 @@ test('keeps the readout height when a long koma label appears', async ({ page })
 
   const after = await stage.boundingBox()
   expect(after?.height).toBeCloseTo(before?.height ?? 0, 0)
+})
+
+test('holds the needle steady on a constant tone', async ({ page }) => {
+  await page.setViewportSize(PHONE)
+  await startTuning(page)
+  await expect(page.getByText('La4', { exact: true })).toBeVisible({ timeout: 15_000 })
+
+  // The fixture is a pure 440 Hz sine, so a correctly damped needle should sit
+  // still. Sampling the rotation directly measures the jitter the stabiliser is
+  // there to remove -- it caught an analysis rate running at 70 Hz while the
+  // stabiliser's constants assumed 30.
+  const angles = await page.evaluate(async () => {
+    const needle = document.querySelector('.needle') as SVGElement
+    const read = () => Number.parseFloat(needle.style.transform.replace(/[^\d.-]/g, '')) || 0
+    // Let the stabiliser settle first; the seeding frames are not what this
+    // measures.
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    const samples: number[] = []
+    for (let i = 0; i < 60; i += 1) {
+      samples.push(read())
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+    return samples
+  })
+
+  const spread = Math.max(...angles) - Math.min(...angles)
+  console.log(`needle spread: ${spread.toFixed(4)} deg over ${angles.length} samples`)
+  // One degree of sweep is 0.56 cents; a steady tone must stay well inside that.
+  expect(spread).toBeLessThan(1)
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS, type Settings } from '../settings/settings-store'
-import { deriveDisplayState, NO_SIGNAL_STATE } from './display-state'
+import { deriveDisplayState, NO_SIGNAL_STATE, SIGNAL_LOSS_THRESHOLD } from './display-state'
 
 const chromatic: Settings = { ...DEFAULT_SETTINGS, noteNaming: 'western' }
 const koma: Settings = { ...chromatic, tuningMode: 'koma' }
@@ -63,11 +63,31 @@ describe('deriveDisplayState', () => {
     expect(shifted.centsOffset).toBeCloseTo(plain.centsOffset, 10)
   })
 
-  it('holds the previous reading through a dropout', () => {
-    const reading = deriveDisplayState(440, chromatic, NO_SIGNAL_STATE)
-    const held = deriveDisplayState(null, chromatic, reading)
-    expect(held.label).toBe('A4')
-    expect(held.hasSignal).toBe(false)
+  it('rides out a short dropout without dimming', () => {
+    let state = deriveDisplayState(440, chromatic, NO_SIGNAL_STATE)
+    for (let frame = 0; frame < SIGNAL_LOSS_THRESHOLD - 1; frame += 1) {
+      state = deriveDisplayState(null, chromatic, state)
+      expect(state.hasSignal).toBe(true)
+      expect(state.label).toBe('A4')
+    }
+  })
+
+  it('dims once the dropout passes the threshold', () => {
+    let state = deriveDisplayState(440, chromatic, NO_SIGNAL_STATE)
+    for (let frame = 0; frame < SIGNAL_LOSS_THRESHOLD; frame += 1) {
+      state = deriveDisplayState(null, chromatic, state)
+    }
+    expect(state.hasSignal).toBe(false)
+    expect(state.label).toBe('A4')
+  })
+
+  it('clears the miss count as soon as a reading returns', () => {
+    let state = deriveDisplayState(440, chromatic, NO_SIGNAL_STATE)
+    state = deriveDisplayState(null, chromatic, state)
+    state = deriveDisplayState(null, chromatic, state)
+    state = deriveDisplayState(440, chromatic, state)
+    expect(state.missedFrames).toBe(0)
+    expect(state.hasSignal).toBe(true)
   })
 
   it('reports no signal before any reading has arrived', () => {
@@ -78,6 +98,7 @@ describe('deriveDisplayState', () => {
     const reading = deriveDisplayState(440, chromatic, NO_SIGNAL_STATE)
     const held = deriveDisplayState(5000, chromatic, reading)
     expect(held.label).toBe('A4')
-    expect(held.hasSignal).toBe(false)
+    expect(held.hasSignal).toBe(true)
+    expect(held.missedFrames).toBe(1)
   })
 })

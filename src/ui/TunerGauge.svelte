@@ -3,7 +3,8 @@
   import {
     GAUGE_LINE_WIDTH,
     GAUGE_VIEWBOX,
-    needleEndpoints,
+    NEEDLE,
+    needleAngle,
     TICKS,
     tolerancePath,
     TRACK_PATH,
@@ -11,7 +12,7 @@
 
   let { state, toleranceCents }: { state: DisplayState; toleranceCents: number } = $props()
 
-  const needle = $derived(needleEndpoints(state.centsOffset))
+  const angle = $derived(needleAngle(state.centsOffset))
   const band = $derived(tolerancePath(toleranceCents))
   const reading = $derived(state.isInTune ? 'var(--accent)' : 'var(--off-tune)')
 </script>
@@ -54,13 +55,14 @@
 
   <line
     class="needle"
-    x1={needle.from.x}
-    y1={needle.from.y}
-    x2={needle.to.x}
-    y2={needle.to.y}
+    x1={NEEDLE.from.x}
+    y1={NEEDLE.from.y}
+    x2={NEEDLE.to.x}
+    y2={NEEDLE.to.y}
     stroke={reading}
     stroke-width={state.isInTune ? 6 : 4}
     stroke-linecap="round"
+    style="transform: rotate({angle}deg); transform-origin: {NEEDLE.origin.x}px {NEEDLE.origin.y}px"
   />
 </svg>
 
@@ -75,11 +77,14 @@
     opacity: 0.5;
   }
 
-  /* Critically damped in the native app: the needle settles as fast as it can
-     without overshooting, because overshoot reads as the note being sharp when
-     it is not. A linear tween is the closest CSS equivalent. */
+  /* Only the rotation is animated. The native gauge uses a critically damped
+     spring (response 0.28, damping 1.0): it settles as fast as it can without
+     overshooting, because overshoot reads as the note being sharp when it is
+     not. An ease-out of the same duration is the closest CSS equivalent.
+     Colour and width are deliberately left out -- crossfading them on every
+     reading reads as a permanent shimmer. */
   .needle {
-    transition: all 90ms linear;
+    transition: transform 280ms cubic-bezier(0.22, 0.9, 0.28, 1);
   }
 
   @media (prefers-reduced-motion: reduce) {
