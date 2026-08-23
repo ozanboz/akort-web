@@ -68,6 +68,7 @@
 
   .name {
     font-size: 15px;
+    white-space: nowrap;
   }
 
   /* Twelve chromatic cells across a phone leave about 30px each, and "Sol♯"

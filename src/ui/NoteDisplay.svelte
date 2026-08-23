@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { DisplayState } from '../tuner/display-state'
+  import { noteScaleFor } from './note-size'
   import { isOffScale } from './theme'
 
   let { state }: { state: DisplayState } = $props()
@@ -17,6 +18,7 @@
   const noteTone = $derived(
     !state.hasSignal ? 'var(--faint)' : state.isInTune ? 'var(--accent)' : 'var(--ink)',
   )
+  const noteScale = $derived(noteScaleFor(state.label))
 </script>
 
 <div class="readout" class:dimmed={!state.hasSignal}>
@@ -73,7 +75,13 @@
     <span class="numeric">{cents}</span>
   </div>
 
-  <p class="note numeric" style="color: {noteTone}" aria-live="polite">{state.label}</p>
+  <p
+    class="note numeric"
+    style="color: {noteTone}; font-size: calc(var(--note-size) * {noteScale})"
+    aria-live="polite"
+  >
+    {state.label}
+  </p>
 </div>
 
 <style>
@@ -103,10 +111,14 @@
   }
 
   .note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--note-size);
     margin: 0;
-    font-size: var(--note-size);
     font-weight: 600;
     line-height: 1;
     text-align: center;
+    white-space: nowrap;
   }
 </style>

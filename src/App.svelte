@@ -54,7 +54,7 @@
 
     <div class="body">
       <main>
-        <div class="readout">
+        <div class="stage">
           <TunerGauge state={tunerState} toleranceCents={$settings.toleranceCents} />
           <NoteDisplay state={tunerState} />
           <NoteStrip state={tunerState} settings={$settings} />
@@ -149,10 +149,10 @@
     margin: 0 auto;
   }
 
-  /* The readout takes the free space and centres itself in it, so the mode
-     switch and the summary stay pinned near the thumb instead of floating
-     under a tall gap. */
-  .readout {
+  /* The stage takes the free space and centres itself in it, so the mode switch
+     and the summary stay pinned near the thumb instead of floating under a tall
+     gap. */
+  .stage {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
@@ -244,7 +244,7 @@
 
     /* Cap the dial rather than letting it grow with the column: past this it
        stops reading as an instrument and starts reading as wallpaper. */
-    .readout :global(.gauge) {
+    .stage :global(.gauge) {
       max-width: 520px;
     }
 

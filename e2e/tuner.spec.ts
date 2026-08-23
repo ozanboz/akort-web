@@ -68,3 +68,25 @@ test('switches the note strip between chromatic and koma alphabets', async ({ pa
   await expect(strip.getByText('Do♯', { exact: true })).toBeHidden()
   await expect(strip.getByText('Sol', { exact: true })).toBeVisible()
 })
+
+test('keeps the readout height when a long koma label appears', async ({ page }) => {
+  await page.setViewportSize(PHONE)
+  await startTuning(page)
+
+  const stage = page.locator('.stage')
+  await expect(page.getByText('La4', { exact: true })).toBeVisible({ timeout: 15_000 })
+  const before = await stage.boundingBox()
+
+  await page.getByRole('button', { name: 'Koma' }).click()
+  await page.getByRole('button', { name: 'Ayarlar' }).click()
+  await page.getByRole('combobox', { name: 'Koma aktarımı — çalınan nota' }).selectOption({ label: 'Do' })
+  await page.getByRole('combobox', { name: 'Koma aktarımı — duyulan ses' }).selectOption({ label: 'Si' })
+  await page.getByRole('button', { name: 'Ayarları kapat' }).click()
+
+  // Transposing by -4 komas renames concert A as "La bemol 4 (4)" -- long
+  // enough to have wrapped before the label was scaled to fit.
+  await expect(page.locator('.note')).toContainText('bemol', { timeout: 15_000 })
+
+  const after = await stage.boundingBox()
+  expect(after?.height).toBeCloseTo(before?.height ?? 0, 0)
+})
