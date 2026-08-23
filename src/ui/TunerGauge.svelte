@@ -1,41 +1,90 @@
 <script lang="ts">
   import type { DisplayState } from '../tuner/display-state'
-  import { GAUGE_MAX_CENTS, needleAngle } from './theme'
+  import {
+    GAUGE_LINE_WIDTH,
+    GAUGE_VIEWBOX,
+    needleEndpoints,
+    TICKS,
+    tolerancePath,
+    TRACK_PATH,
+  } from './theme'
 
   let { state, toleranceCents }: { state: DisplayState; toleranceCents: number } = $props()
 
-  const angle = $derived(needleAngle(state.centsOffset))
-  const toleranceHalfWidth = $derived((toleranceCents / GAUGE_MAX_CENTS) * 50)
+  const needle = $derived(needleEndpoints(state.centsOffset))
+  const band = $derived(tolerancePath(toleranceCents))
+  const reading = $derived(state.isInTune ? 'var(--accent)' : 'var(--off-tune)')
 </script>
 
-<svg class="gauge" class:dimmed={!state.hasSignal} viewBox="0 0 200 110" role="img"
-     aria-label="Akort göstergesi">
-  <path d="M 10 100 A 90 90 0 0 1 190 100" class="arc" />
-  <rect
-    x={100 - toleranceHalfWidth}
-    y="6"
-    width={toleranceHalfWidth * 2}
-    height="12"
-    class="tolerance"
-    class:in-tune={state.isInTune}
+<svg
+  class="gauge"
+  class:dimmed={!state.hasSignal}
+  viewBox="0 0 {GAUGE_VIEWBOX.width} {GAUGE_VIEWBOX.height}"
+  role="img"
+  aria-label="Akort göstergesi"
+>
+  <path
+    d={TRACK_PATH}
+    fill="none"
+    stroke="var(--track)"
+    stroke-width={GAUGE_LINE_WIDTH}
+    stroke-linecap="round"
   />
-  <line x1="100" y1="100" x2="100" y2="18" class="needle"
-        style="transform: rotate({angle}deg)" />
-  <circle cx="100" cy="100" r="5" class="pivot" />
+  <path
+    d={band}
+    fill="none"
+    stroke="var(--accent)"
+    stroke-opacity="0.35"
+    stroke-width={GAUGE_LINE_WIDTH}
+    stroke-linecap="round"
+  />
+
+  {#each TICKS as tick (tick.cents)}
+    <line
+      x1={tick.from.x}
+      y1={tick.from.y}
+      x2={tick.to.x}
+      y2={tick.to.y}
+      stroke="var(--muted)"
+      stroke-opacity={tick.isZero ? 1 : 0.55}
+      stroke-width={tick.isZero ? 2 : 1.5}
+      stroke-linecap="round"
+    />
+  {/each}
+
+  <line
+    class="needle"
+    x1={needle.from.x}
+    y1={needle.from.y}
+    x2={needle.to.x}
+    y2={needle.to.y}
+    stroke={reading}
+    stroke-width={state.isInTune ? 6 : 4}
+    stroke-linecap="round"
+  />
 </svg>
 
 <style>
-  .gauge { width: 100%; max-width: 26rem; }
-  .gauge.dimmed { opacity: 0.35; }
-  .arc { fill: none; stroke: currentColor; stroke-width: 2; opacity: 0.25; }
-  .tolerance { fill: currentColor; opacity: 0.2; }
-  .tolerance.in-tune { opacity: 0.6; }
-  .needle {
-    stroke: currentColor;
-    stroke-width: 3;
-    stroke-linecap: round;
-    transform-origin: 100px 100px;
-    transition: transform 90ms linear;
+  .gauge {
+    display: block;
+    width: 100%;
+    transition: opacity 150ms ease-out;
   }
-  .pivot { fill: currentColor; }
+
+  .gauge.dimmed {
+    opacity: 0.5;
+  }
+
+  /* Critically damped in the native app: the needle settles as fast as it can
+     without overshooting, because overshoot reads as the note being sharp when
+     it is not. A linear tween is the closest CSS equivalent. */
+  .needle {
+    transition: all 90ms linear;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .needle {
+      transition: none;
+    }
+  }
 </style>

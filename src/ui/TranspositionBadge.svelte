@@ -24,9 +24,17 @@
 <style>
   .badge {
     margin: 0;
-    padding: 0.25rem 0.75rem;
+    padding: 5px 12px;
     border-radius: 999px;
-    background: color-mix(in srgb, currentColor 12%, transparent);
-    font-size: 0.85rem;
+    background: rgba(30, 143, 130, 0.12);
+    color: var(--accent-deep);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .badge {
+      color: var(--accent);
+    }
   }
 </style>
