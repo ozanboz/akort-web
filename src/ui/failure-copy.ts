@@ -37,6 +37,11 @@ const COPY: Record<AudioFailure, FailureCopy> = {
     body: 'Cihaz çıkarıldı ya da bağlantısı koptu. Yeniden bağlayıp deneyin.',
     canRetry: true,
   },
+  'setup-failed': {
+    title: 'Ses motoru başlatılamadı',
+    body: 'Bağlantı sorunu olabilir. Yeniden deneyin, sürerse sayfayı yenileyin.',
+    canRetry: true,
+  },
 }
 
 export function failureCopy(failure: AudioFailure): FailureCopy {

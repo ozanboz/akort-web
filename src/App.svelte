@@ -22,7 +22,7 @@
 
   async function start() {
     failure = null
-    await microphone.start(
+    const started = await microphone.start(
       (hz) => {
         tunerState = deriveDisplayState(hz, $settings, tunerState)
       },
@@ -31,7 +31,13 @@
         listening = false
       },
     )
-    listening = failure === null
+    // Only a confirmed start turns the view on, and only onFailure turns it
+    // off. start() also returns false for a refused double tap and for an
+    // attempt superseded by a later one, and neither means the graph that
+    // later call left running has stopped -- clearing the view for those would
+    // put the welcome screen over a live microphone, which handleVisibility
+    // then refuses to suspend and no further tap can recover.
+    if (started) listening = true
   }
 
   function handleVisibility() {

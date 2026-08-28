@@ -9,10 +9,44 @@ describe('PitchStabilizer', () => {
     expect(stabilizer.stabilize(440)).toBe(440)
   })
 
-  it('holds the last reading through a missed frame', () => {
+  // Holding the last reading here instead would hide the dropout from
+  // deriveDisplayState, whose miss counter is what dims the readout.
+  it('reports a missed frame as a miss', () => {
     const stabilizer = new PitchStabilizer()
     stabilizer.stabilize(440)
-    expect(stabilizer.stabilize(null)).toBe(440)
+    expect(stabilizer.stabilize(null)).toBeNull()
+  })
+
+  // Inside the snap threshold on purpose: 880 would take the snap branch and
+  // return the previous reading without ever touching the median or the
+  // smoother, which would pin nothing about resuming. 441.74 is 440 smoothed
+  // toward a median of 445 -- clearing the median window on a miss would give
+  // 443.47, and clearing the smoothed value would give 450.
+  it('resumes from the pre-gap pitch rather than re-seeding', () => {
+    const stabilizer = new PitchStabilizer()
+    stabilizer.stabilize(440)
+    for (let frame = 0; frame < 20; frame += 1) stabilizer.stabilize(null)
+    expect(stabilizer.stabilize(450)).toBeCloseTo(441.74, 1)
+  })
+
+  // A note change begins in the decay of the old note, which is where YIN
+  // misses, so the two confirming frames are often not adjacent. Clearing the
+  // snap candidate on a miss delays this by a frame -- and with misses landing
+  // every other frame it never confirms at all, leaving the readout undimmed
+  // on the old note while the new one sounds.
+  it('confirms a note change whose frames are split by a miss', () => {
+    const stabilizer = new PitchStabilizer()
+    stabilizer.stabilize(440)
+    expect(stabilizer.stabilize(330)).toBe(440)
+    expect(stabilizer.stabilize(null)).toBeNull()
+    expect(stabilizer.stabilize(330)).toBe(330)
+  })
+
+  it('still converges on a note change with misses interleaved throughout', () => {
+    const stabilizer = new PitchStabilizer()
+    stabilizer.stabilize(440)
+    const readings = [330, null, 330, null, 330].map((frame) => stabilizer.stabilize(frame))
+    expect(readings.at(-1)).toBeCloseTo(330, 0)
   })
 
   it('returns null before any reading has arrived', () => {
@@ -55,10 +89,10 @@ describe('PitchStabilizer', () => {
     expect(stabilizer.stabilize(null)).toBeNull()
   })
 
-  it('ignores non-finite and non-positive input', () => {
+  it('reports non-finite and non-positive input as a miss', () => {
     const stabilizer = new PitchStabilizer()
     stabilizer.stabilize(440)
-    expect(stabilizer.stabilize(0)).toBe(440)
-    expect(stabilizer.stabilize(Number.NaN)).toBe(440)
+    expect(stabilizer.stabilize(0)).toBeNull()
+    expect(stabilizer.stabilize(Number.NaN)).toBeNull()
   })
 })

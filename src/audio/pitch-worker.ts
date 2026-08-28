@@ -30,7 +30,7 @@ self.onmessage = (event: MessageEvent<Incoming>) => {
   }
 
   for (const window of buffer.append(message.samples)) {
-    const raw = estimateFrequency(window, { sampleRate })
+    const raw = estimateFrequency(window, sampleRate)
     self.postMessage(stabilizer.stabilize(raw))
   }
 }

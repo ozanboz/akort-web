@@ -36,7 +36,7 @@ function jitterCents(hopSize: number, signal: Float32Array): number {
   const chunk = 128
   for (let offset = 0; offset + chunk <= signal.length; offset += chunk) {
     for (const window of buffer.append(signal.subarray(offset, offset + chunk))) {
-      const stabilized = stabilizer.stabilize(estimateFrequency(window, { sampleRate: SAMPLE_RATE }))
+      const stabilized = stabilizer.stabilize(estimateFrequency(window, SAMPLE_RATE))
       if (stabilized !== null) readings.push(stabilized)
     }
   }

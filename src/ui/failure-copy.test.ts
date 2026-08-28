@@ -9,6 +9,7 @@ const ALL: AudioFailure[] = [
   'insecure-context',
   'unsupported',
   'device-lost',
+  'setup-failed',
 ]
 
 describe('failureCopy', () => {
@@ -24,6 +25,7 @@ describe('failureCopy', () => {
     expect(failureCopy('permission-denied').canRetry).toBe(true)
     expect(failureCopy('device-busy').canRetry).toBe(true)
     expect(failureCopy('device-lost').canRetry).toBe(true)
+    expect(failureCopy('setup-failed').canRetry).toBe(true)
   })
 
   it('does not offer a retry where retrying cannot help', () => {

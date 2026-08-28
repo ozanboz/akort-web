@@ -1,14 +1,15 @@
+import { MIN_FREQUENCY } from '../note-systems/frequency-range'
+
 export const ANALYSIS_RATE_HZ = 30
 
 const MINIMUM_WINDOW = 2048
-const LOWEST_FREQUENCY = 65
 
 // YIN compares the window against itself, so half of it must hold one period of
 // the lowest pitch we claim to detect. A fixed 2048 stops reaching 65 Hz above
 // about 66 kHz -- fine on iOS, which is handed 44.1 or 48 kHz, but a browser
 // takes whatever the device offers.
 export function windowSizeFor(sampleRate: number): number {
-  const needed = 2 * (sampleRate / LOWEST_FREQUENCY)
+  const needed = 2 * (sampleRate / MIN_FREQUENCY)
   let size = MINIMUM_WINDOW
   while (size < needed) size *= 2
   return size
