@@ -18,11 +18,30 @@ export class PitchStabilizer {
   // an octave glitch looks like). Two consecutive agreeing frames separate them.
   private pendingSnap: number | null = null
 
-  // Missed frames are not fed to the median: silence between plucks would
-  // otherwise poison the window and drag the reading.
+  // A missed frame is reported as a miss, not papered over with the last
+  // reading. Holding here would hide the dropout from deriveDisplayState, whose
+  // own miss counter is the thing that dims the readout -- and that counter can
+  // never advance if this method keeps answering with a frequency. The needle
+  // does not move either way: deriveDisplayState re-derives the same label and
+  // cents from the same held frequency.
+  //
+  // The miss guard deliberately touches nothing else. `smoothed` and the median
+  // window survive so a signal returning after the gap picks up where it left
+  // off instead of re-seeding, and `pendingSnap` survives with them. Clearing
+  // the snap candidate on a miss looks tidier -- it stops a candidate from
+  // before a long silence being confirmed by one later frame -- but it costs
+  // far more than it saves: a note change begins in the decay of the old note,
+  // exactly where YIN misses, and the two confirming frames then have to be
+  // adjacent. Measured against a 440 to 330 change, one dropped frame between
+  // the candidate and its confirmation delays the snap by a frame, and with
+  // misses interleaved every other frame the candidate is destroyed each time
+  // and the snap never lands at all -- the readout sits undimmed on the old
+  // note while the new one is sounding, because the frames in between keep
+  // resetting the miss counter. A stale candidate is a transient wrong reading
+  // that the next two frames correct; this is a stable one that nothing does.
   stabilize(frequency: number | null): number | null {
     if (frequency === null || !Number.isFinite(frequency) || frequency <= 0) {
-      return this.smoothed
+      return null
     }
 
     const previous = this.smoothed

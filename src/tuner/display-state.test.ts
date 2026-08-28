@@ -94,11 +94,62 @@ describe('deriveDisplayState', () => {
     expect(deriveDisplayState(null, chromatic, NO_SIGNAL_STATE)).toEqual(NO_SIGNAL_STATE)
   })
 
+  // The held frequency has to stay the one that produced a note. Storing the
+  // rejected 5000 instead would make every later miss fail to re-derive, and
+  // the labels would freeze against settings changes from then on.
   it('holds the previous reading when a frequency falls outside the range', () => {
     const reading = deriveDisplayState(440, chromatic, NO_SIGNAL_STATE)
     const held = deriveDisplayState(5000, chromatic, reading)
     expect(held.label).toBe('A4')
     expect(held.hasSignal).toBe(true)
     expect(held.missedFrames).toBe(1)
+
+    const turkish: Settings = { ...chromatic, noteNaming: 'turkish' }
+    expect(deriveDisplayState(null, turkish, held).label).toBe('La4')
+  })
+
+  // Putting the instrument down to reach the settings panel is the normal way
+  // to use it, so the readout has to follow a change made while nothing is
+  // sounding -- otherwise the note and the needle freeze while the strip and
+  // the badge update around them.
+  it('follows a settings change while nothing is sounding', () => {
+    const turkish: Settings = { ...chromatic, noteNaming: 'turkish' }
+    let state = deriveDisplayState(440, chromatic, NO_SIGNAL_STATE)
+    state = deriveDisplayState(null, chromatic, state)
+    expect(state.label).toBe('A4')
+
+    state = deriveDisplayState(null, turkish, state)
+    expect(state.label).toBe('La4')
+    expect(state.hasSignal).toBe(true)
+
+    // La (9) to Mi (4) is a five-semitone drop, so concert A is named Mi4.
+    const transposed: Settings = {
+      ...turkish,
+      chromaticTranspositionFrom: 9,
+      chromaticTranspositionTo: 4,
+    }
+    state = deriveDisplayState(null, transposed, state)
+    expect(state.label).toBe('Mi4')
+
+    // The needle, not just the name: raising A4 to 442 leaves a held 440 flat
+    // by 7.85 cents, which is outside the default 5 cent tolerance.
+    const raised: Settings = { ...chromatic, referenceFrequency: 442 }
+    state = deriveDisplayState(null, raised, state)
+    expect(state.centsOffset).toBeCloseTo(-7.85, 2)
+    expect(state.isInTune).toBe(false)
+  })
+
+  // NoteStrip indexes its cells by scalePosition and reads komaOffset, so a
+  // frozen chromatic position of 9 would highlight nothing on a 7-cell strip.
+  it('re-derives the koma fields when the mode changes during silence', () => {
+    let state = deriveDisplayState(440, chromatic, NO_SIGNAL_STATE)
+    expect(state.scalePosition).toBe(9)
+    expect(state.komaOffset).toBeNull()
+
+    state = deriveDisplayState(null, chromatic, state)
+    state = deriveDisplayState(null, koma, state)
+    expect(state.label).toBe('A4')
+    expect(state.scalePosition).toBe(5)
+    expect(state.komaOffset).toBe(0)
   })
 })

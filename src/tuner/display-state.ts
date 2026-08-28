@@ -16,6 +16,14 @@ export interface DisplayState {
   komaOffset: number | null
   /** Consecutive misses so far; the gauge dims once these pass the threshold. */
   missedFrames: number
+  /**
+   * The frequency the reading was derived from, kept so it can be derived again
+   * with different settings while nothing is sounding. Putting the instrument
+   * down to reach the panel is the normal way to use it, and carrying the old
+   * labels through unchanged would freeze the note and the needle while the
+   * strip and the badge updated around them.
+   */
+  frequency: number | null
 }
 
 // Individual YIN windows routinely miss during vibrato, decay and between
@@ -33,6 +41,7 @@ export const NO_SIGNAL_STATE: DisplayState = {
   scalePosition: null,
   komaOffset: null,
   missedFrames: SIGNAL_LOSS_THRESHOLD,
+  frequency: null,
 }
 
 export function deriveDisplayState(
@@ -40,29 +49,31 @@ export function deriveDisplayState(
   settings: Settings,
   previous: DisplayState,
 ): DisplayState {
-  const note = frequency === null ? null : findNote(frequency, settings)
+  const sounding = frequency === null ? null : findNote(frequency, settings)
 
-  if (note === null) {
+  if (sounding === null) {
     // Clamped rather than left to grow: nothing reads it past the threshold,
     // and a counter climbing at 30 a second forever is just noise in the state.
     const missedFrames = Math.min(previous.missedFrames + 1, SIGNAL_LOSS_THRESHOLD)
-    return {
-      ...previous,
-      missedFrames,
-      hasSignal: previous.hasSignal && missedFrames < SIGNAL_LOSS_THRESHOLD,
-    }
+    const hasSignal = previous.hasSignal && missedFrames < SIGNAL_LOSS_THRESHOLD
+    const held = previous.frequency === null ? null : findNote(previous.frequency, settings)
+    if (held === null) return { ...previous, missedFrames, hasSignal }
+
+    return { ...reading(held, settings), hasSignal, missedFrames, frequency: previous.frequency }
   }
 
+  return { ...reading(sounding, settings), hasSignal: true, missedFrames: 0, frequency }
+}
+
+function reading(note: NoteLabel, settings: Settings) {
   const shifted = applyTransposition(note, settings)
 
   return {
     label: displayName(shifted, settings.noteNaming),
     centsOffset: shifted.centsOffset,
     isInTune: Math.abs(shifted.centsOffset) <= settings.toleranceCents,
-    hasSignal: true,
     scalePosition: shifted.scalePosition,
     komaOffset: shifted.komaOffset,
-    missedFrames: 0,
   }
 }
 
