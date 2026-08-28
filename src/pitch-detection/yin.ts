@@ -1,33 +1,19 @@
-export interface YinOptions {
-  sampleRate: number
-  minFrequency?: number
-  maxFrequency?: number
-  threshold?: number
-  fallbackConfidenceCeiling?: number
-}
+import { MAX_FREQUENCY, MIN_FREQUENCY } from '../note-systems/frequency-range'
 
 // Loosened from the paper's 0.15 to tolerate quieter playing: CMNDF is
 // amplitude-invariant in theory, but a quiet signal's SNR against the mic's
 // noise floor degrades and its dip often fails a stricter threshold.
-const DEFAULT_THRESHOLD = 0.25
+const THRESHOLD = 0.25
 
 // The YIN paper's own step-3 fallback: rather than reporting "no pitch" when
 // nothing clears the threshold, retry with a looser ceiling. True noise still
 // fails, its CMNDF hovering near 1.
-const DEFAULT_FALLBACK_CONFIDENCE_CEILING = 0.5
+const FALLBACK_CONFIDENCE_CEILING = 0.5
 
-export function estimateFrequency(samples: Float32Array, options: YinOptions): number | null {
-  const {
-    sampleRate,
-    minFrequency = 65,
-    maxFrequency = 2000,
-    threshold = DEFAULT_THRESHOLD,
-    fallbackConfidenceCeiling = DEFAULT_FALLBACK_CONFIDENCE_CEILING,
-  } = options
-
+export function estimateFrequency(samples: Float32Array, sampleRate: number): number | null {
   const length = samples.length
-  const maxTau = Math.min(Math.floor(length / 2), Math.floor(sampleRate / minFrequency))
-  const minTau = Math.max(2, Math.floor(sampleRate / maxFrequency))
+  const maxTau = Math.min(Math.floor(length / 2), Math.floor(sampleRate / MIN_FREQUENCY))
+  const minTau = Math.max(2, Math.floor(sampleRate / MAX_FREQUENCY))
   if (maxTau <= minTau || length <= maxTau) return null
 
   const difference = new Float64Array(maxTau + 1)
@@ -49,8 +35,8 @@ export function estimateFrequency(samples: Float32Array, options: YinOptions): n
   }
 
   const bestTau =
-    firstDip(cmndf, threshold, minTau, maxTau) ??
-    firstDip(cmndf, fallbackConfidenceCeiling, minTau, maxTau)
+    firstDip(cmndf, THRESHOLD, minTau, maxTau) ??
+    firstDip(cmndf, FALLBACK_CONFIDENCE_CEILING, minTau, maxTau)
   if (bestTau === null) return null
 
   const refinedTau = interpolate(cmndf, bestTau, minTau, maxTau)

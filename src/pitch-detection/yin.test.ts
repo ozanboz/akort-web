@@ -23,12 +23,12 @@ function noise(length: number, seed = 1): Float32Array {
 
 describe('estimateFrequency', () => {
   it('recovers concert A within a cent', () => {
-    const detected = estimateFrequency(sine(440, 4096), { sampleRate: SAMPLE_RATE })!
+    const detected = estimateFrequency(sine(440, 4096), SAMPLE_RATE)!
     expect(1200 * Math.log2(detected / 440)).toBeCloseTo(0, 0)
   })
 
   it('recovers a low bass note near the range floor', () => {
-    const detected = estimateFrequency(sine(82.41, 4096), { sampleRate: SAMPLE_RATE })!
+    const detected = estimateFrequency(sine(82.41, 4096), SAMPLE_RATE)!
     expect(1200 * Math.log2(detected / 82.41)).toBeCloseTo(0, 0)
   })
 
@@ -37,7 +37,7 @@ describe('estimateFrequency', () => {
   // Swift suite allows the same proportional error (2 Hz at 440, 4 Hz at 880,
   // both about 7.9 cents).
   it('recovers a high note near the range ceiling', () => {
-    const detected = estimateFrequency(sine(1760, 4096), { sampleRate: SAMPLE_RATE })!
+    const detected = estimateFrequency(sine(1760, 4096), SAMPLE_RATE)!
     expect(Math.abs(1200 * Math.log2(detected / 1760))).toBeLessThan(5)
   })
 
@@ -49,26 +49,26 @@ describe('estimateFrequency', () => {
       mixed[index] = fundamental[index] + 0.8 * harmonic[index]
     }
 
-    const detected = estimateFrequency(mixed, { sampleRate: SAMPLE_RATE })!
+    const detected = estimateFrequency(mixed, SAMPLE_RATE)!
     expect(1200 * Math.log2(detected / 220)).toBeCloseTo(0, 0)
   })
 
   it('returns null for white noise', () => {
-    expect(estimateFrequency(noise(4096), { sampleRate: SAMPLE_RATE })).toBeNull()
+    expect(estimateFrequency(noise(4096), SAMPLE_RATE)).toBeNull()
   })
 
   it('returns null for silence', () => {
-    expect(estimateFrequency(new Float32Array(4096), { sampleRate: SAMPLE_RATE })).toBeNull()
+    expect(estimateFrequency(new Float32Array(4096), SAMPLE_RATE)).toBeNull()
   })
 
   it('returns null for a window too short to hold the lowest period', () => {
-    expect(estimateFrequency(sine(440, 64), { sampleRate: SAMPLE_RATE })).toBeNull()
+    expect(estimateFrequency(sine(440, 64), SAMPLE_RATE)).toBeNull()
   })
 
   // Without parabolic interpolation the nearest whole tau at A4 quantises to
   // roughly 17 cents, which is most of a 22.64-cent koma.
   it('beats whole-sample quantisation through interpolation', () => {
-    const detected = estimateFrequency(sine(443, 4096), { sampleRate: SAMPLE_RATE })!
+    const detected = estimateFrequency(sine(443, 4096), SAMPLE_RATE)!
     expect(Math.abs(1200 * Math.log2(detected / 443))).toBeLessThan(3)
   })
 })

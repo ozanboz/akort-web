@@ -14,7 +14,7 @@ describe('YIN performance', () => {
     const iterations = 20
     const started = performance.now()
     for (let run = 0; run < iterations; run += 1) {
-      estimateFrequency(samples, { sampleRate: SAMPLE_RATE })
+      estimateFrequency(samples, SAMPLE_RATE)
     }
     const perCall = (performance.now() - started) / iterations
 
